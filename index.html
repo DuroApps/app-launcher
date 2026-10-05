@@ -360,80 +360,212 @@
   .tab-content { display: none; }
   .tab-content.active { display: block; }
 
-  /* ── Category tab bar ─────────────────────────────────────────── */
-  .tab-bar {
-    display: flex;
-    gap: 6px;
-    margin-bottom: 20px;
-    /* Keep the original underline so the bar still reads as a tab bar
-       even when the per-tab pills have their own backgrounds. */
-    border-bottom: 1px solid #d3d1c7;
-    overflow-x: auto;
-    flex-wrap: wrap;
-    padding-bottom: 2px;
-  }
-  /* Per-tab colour theming.
-     Each .tab-btn gets a --tab-color set inline by renderTabBar(), picked
-     from a small palette that cycles by tab position. Tabs now share one
-     uniform light-grey background/border — the tab's identity colour
-     shows only in the text (and the active tab's border), not as a
-     background fill. Pills are fully rounded (999px) rather than the
-     previous tab-shaped top-rounded corners. */
-  .tab-bar .tab-btn {
-    --tab-color: #5f5e5a;             /* fallback if no inline var set */
-    padding: 9px 20px;
-    border: 1.5px solid #cfd1cf;
-    background: #eceeec;
-    color: var(--tab-color);
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    border-radius: 999px;             /* fully rounded pill */
+  /* ── Card holder: category tabs as a stack of divider cards ──────
+     Each tab is its own card. All cards sit exactly on top of each other;
+     only the front card's body is shown, the others show their tab only.
+     Every tab keeps a fixed position along the top edge (--i), so all tabs
+     stay visible. --p is the card's place in the order (0 = front).
+     Clicking a tab lifts that card and drops it on top.
+     The app grid sits over the front card's face. --n (tab count) is set
+     by renderTabBar(). */
+  .card-holder {
+    --n: 5;
+    --off: 0px;                                   /* cards sit exactly on top of each other */
+    --tab-h: 38px;
+    --top: calc(var(--tab-h) + (var(--n) - 1) * var(--off));
     position: relative;
-    z-index: 1;
-    white-space: nowrap;
-    transition: background 0.15s, color 0.15s, transform 0.05s;
+    z-index: 0;
+    margin-top: 8px;
+    min-height: 320px;
+    font-family: Calibri, Carlito, "Segoe UI", sans-serif;
   }
-  .tab-bar .tab-btn:hover {
-    background: #e0e2e0;
-  }
-  .tab-bar .tab-btn.active {
-    background: #d7d9d6;
-    border-color: var(--tab-color);
-    /* Slightly elevated to read as "selected" against the bar. */
-    box-shadow: 0 2px 6px rgba(0,0,0,0.10);
-    transform: translateY(-1px);
-  }
-  .tab-bar .tab-btn.active .tab-count {
-    opacity: 0.85;
-  }
-  .tab-bar .tab-btn .tab-count {
-    opacity: 0.7;
-    font-size: 12px;
-    margin-left: 2px;
-  }
-  .tab-bar .tab-btn .tab-edit {
-    margin-left: 6px;
-    font-size: 11px;
-    opacity: 0.6;
-    cursor: pointer;
-  }
-  .tab-bar .tab-btn .tab-edit:hover { opacity: 1; }
-  .tab-bar .tab-btn.active .tab-edit { color: #ffffff; }
-  .tab-bar .new-tab-btn {
-    padding: 8px 14px;
+  .tab-actions { display: flex; justify-content: flex-end; min-height: 4px; }
+  .tab-actions .new-tab-btn {
+    padding: 6px 14px;
     border: 1px dashed #b4b2a9;
     background: transparent;
     color: #5f5e5a;
     border-radius: 8px;
     font-size: 13px;
-    margin-left: 8px;
-    margin-bottom: 4px;
     cursor: pointer;
   }
-  .tab-bar .new-tab-btn:hover { background: rgba(255,255,255,0.55); color: #2c2c2a; }
+  .tab-actions .new-tab-btn:hover { background: rgba(255,255,255,0.55); color: #2c2c2a; }
+  .tab-bar { position: absolute; inset: 0; }
+  /* One grey palette for every card. Selected card: light grey.
+     Cards behind: a slightly darker grey. Both semi-transparent so the
+     DUROPLY watermark shows through. */
+  .card-holder {
+    --card-front: rgba(236, 236, 234, 0.60);
+    --card-back:  rgba(205, 205, 202, 0.85);
+    --card-line:  rgba(0, 0, 0, 0.10);
+    --card-text-front: #2c2c2a;
+    --card-text-back:  #4a4a47;
+  }
+  .holder-card {
+    --p: 0;
+    --i: 0;
+    position: absolute;
+    top: calc(var(--top) - var(--p) * var(--off));
+    bottom: calc(var(--p) * var(--off));
+    left: calc(var(--p) * var(--off));
+    right: calc((var(--n) - 1 - var(--p)) * var(--off));
+    border-radius: 0 14px 14px 14px;
+    border: 1px solid var(--card-line);
+    background-color: var(--card-front);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    transition: top 0.32s cubic-bezier(0.22,1,0.36,1),
+                bottom 0.32s cubic-bezier(0.22,1,0.36,1),
+                left 0.32s cubic-bezier(0.22,1,0.36,1),
+                right 0.32s cubic-bezier(0.22,1,0.36,1),
+                transform 0.2s ease-out;
+  }
+  /* Binder hole, as on a printed index card. */
+  .holder-card::after {
+    content: ""; position: absolute; left: 11px; bottom: 14px;
+    width: 15px; height: 15px; border-radius: 50%; background: #2c2c2a;
+  }
+  .holder-card.front { box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  /* Only the front card shows its body. Cards behind show their tab only. */
+  .holder-card:not(.front) {
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+  }
+  .holder-card:not(.front)::after { display: none; }
+  .holder-card.lift  { transform: translateY(-48px) rotate(-0.6deg); }
+  .holder-card .tab-btn {
+    position: absolute;
+    bottom: 100%;
+    margin-bottom: -1px;
+    left: calc(10px + var(--i) * (100% - 20px) / var(--n));
+    width: calc((100% - 20px) / var(--n) - 4px);
+    height: var(--tab-h);
+    display: flex; align-items: center; justify-content: center; gap: 4px;
+    padding: 0 8px;
+    border: 1px solid var(--card-line);
+    border-bottom: none;
+    border-radius: 18px 18px 0 0;
+    background: var(--card-back);
+    color: var(--card-text-back);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  .holder-card .tab-btn:hover { filter: brightness(0.97); }
+  /* Selected tab matches its card body. */
+  .holder-card.front .tab-btn { background: var(--card-front); color: var(--card-text-front); }
+  .holder-card .tab-btn .tab-label { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .holder-card .tab-btn .tab-count { font-weight: 400; font-size: 12px; opacity: 0.8; flex-shrink: 0; }
+  .holder-card .tab-btn .tab-edit  { font-size: 11px; opacity: 0.6; cursor: pointer; flex-shrink: 0; }
+  .holder-card .tab-btn .tab-edit:hover { opacity: 1; }
+  .holder-card .tab-btn:focus-visible { outline: 2px solid #5f5e5a; outline-offset: 2px; }
+  /* App grid sits on the front card's face. */
+  .card-holder .grid {
+    position: relative;
+    z-index: 100;
+    padding: calc(var(--top) + 28px) calc((var(--n) - 1) * var(--off) + 24px) 44px 58px;
+    transition: opacity 0.15s;
+    pointer-events: none;          /* let clicks reach the tabs behind its padding */
+  }
+  .card-holder .grid > * { pointer-events: auto; }
+  .card-holder .grid.swapping { opacity: 0; }
+  /* Narrow screens: tabs get small, so show the name only. */
+  @media (max-width: 700px) {
+    .holder-card .tab-btn { font-size: 12px; padding: 0 4px; }
+    .holder-card .tab-btn .tab-count,
+    .holder-card .tab-btn .tab-edit { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .holder-card { transition: none; }
+    .card-holder .grid { transition: none; }
+  }
 
   .role-badge.super_user{background:#1f3a5f}
+
+  /* ── Modern theme for the card holder and app tiles ─────────────
+     Neutral slate greys, one Duroply red accent, hairline borders and
+     soft depth. Cards stay semi-transparent so the watermark shows. */
+  .card-holder {
+    --accent: #b5121b;
+    --card-front: rgba(246, 247, 249, 0.62);
+    --card-back:  rgba(213, 217, 223, 0.78);
+    --card-line:  rgba(15, 23, 42, 0.08);
+    --card-text-front: #111827;
+    --card-text-back:  #4b5563;
+    --tab-h: 42px;
+  }
+  .holder-card {
+    border-radius: 0 16px 16px 16px;
+  }
+  .holder-card.front {
+    box-shadow: 0 1px 0 rgba(255,255,255,0.7) inset,
+                0 18px 40px -12px rgba(15, 23, 42, 0.16),
+                0 2px 6px rgba(15, 23, 42, 0.04);
+  }
+  .holder-card::after { display: none; }          /* no binder hole */
+  .holder-card .tab-btn {
+    border-radius: 12px 12px 0 0;
+    font-size: 13.5px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    transition: background 0.18s, color 0.18s;
+  }
+  .holder-card:not(.front) .tab-btn:hover {
+    filter: none;
+    background: rgba(226, 229, 234, 0.92);
+    color: var(--card-text-front);
+  }
+  /* Thin red bar on top of the selected tab. */
+  .holder-card.front .tab-btn::before {
+    content: ""; position: absolute; top: 0; left: 16px; right: 16px;
+    height: 3px; border-radius: 0 0 3px 3px; background: var(--accent);
+  }
+  .holder-card .tab-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .card-holder .grid {
+    padding: calc(var(--top) + 32px) 32px 40px 32px;
+    gap: 28px 18px;
+  }
+  .tab-actions .new-tab-btn {
+    border: 1px solid rgba(15, 23, 42, 0.14);
+    border-radius: 999px;
+    padding: 6px 16px;
+    background: rgba(255,255,255,0.5);
+    color: #374151;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+  }
+  .tab-actions .new-tab-btn:hover { border-color: #b5121b; color: #b5121b; background: rgba(255,255,255,0.8); }
+
+  /* App tiles: rounded-square glass icons with a red hover ring. */
+  .card-icon {
+    width: 64px; height: 64px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.88);
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 6px 16px -6px rgba(15, 23, 42, 0.12);
+    transition: transform 0.18s cubic-bezier(0.22,1,0.36,1), box-shadow 0.18s, border-color 0.18s;
+  }
+  .card:hover .card-icon {
+    transform: translateY(-3px);
+    border-color: rgba(181, 18, 27, 0.55);
+    box-shadow: 0 0 0 4px rgba(181, 18, 27, 0.08), 0 12px 24px -8px rgba(181, 18, 27, 0.25);
+  }
+  .card-title {
+    font-size: 13.5px; font-weight: 700;
+    color: #111827; letter-spacing: 0.1px;
+  }
+  .card:hover .card-title { color: #b5121b; }
+  .card-desc { color: #6b7280; }
+  .empty {
+    border: 1px dashed rgba(15, 23, 42, 0.18);
+    border-radius: 14px;
+    color: #6b7280;
+    background: rgba(255,255,255,0.35);
+  }
 </style>
 </head>
 <body>
@@ -513,8 +645,11 @@
     </div>
   </header>
 
-  <div class="tab-bar" id="tab-bar"></div>
-  <div class="grid" id="app-grid"></div>
+  <div class="tab-actions" id="tab-actions"></div>
+  <div class="card-holder" id="card-holder">
+    <div class="tab-bar" id="tab-bar"></div>
+    <div class="grid" id="app-grid"></div>
+  </div>
 </div>
 
 <!-- ═══════════════════ ADD/EDIT MODAL ═══════════════════ -->
@@ -626,12 +761,14 @@ const AUTH_HANDOFF_KEY       = 'duroply_auth_handoff';
 // STATE
 // ════════════════════════════════════════════════════════════════
 
-let _sbClient     = null;  // DATA client — stays on the anon role for all
-                           //   reads/writes to DUROPLY.launcher_apps and
-                           //   DUROPLY.launcher_tabs. Same behaviour as
-                           //   before Supabase Auth was introduced, so the
-                           //   existing RLS policies (anon SELECT/INSERT/…)
-                           //   continue to work unchanged.
+let _sbClient     = null;  // DATA client — anon role before login. After a
+                           //   successful login (see doVerifyOtp), it is
+                           //   given the user's session via setSession() so
+                           //   writes to launcher_apps/launcher_tabs that are
+                           //   gated by is_admin()/auth.uid() actually pass.
+                           //   Previously stayed anon-only forever, which
+                           //   silently failed every admin write once those
+                           //   RLS policies were tightened to require auth.
 let _sbAuthClient = null;  // AUTH client — used ONLY for signInWithOtp() /
                            //   verifyOtp() and the user_profiles lookup. Kept
                            //   separate so the user's JWT never leaks onto the
@@ -1048,8 +1185,12 @@ function tabLabel(id){ const t = tabs.find(x => x.id === id); return t ? t.label
 //   2) Build _currentUser with the same shape the rest of the launcher expects
 //   3) Stash session tokens (NOT a password) for handoff to launched apps
 //
-// The dual-client architecture is preserved:
-//   _sbClient      → anon role, reads/writes launcher_apps & launcher_tabs
+// The dual-client architecture, UPDATED after the RLS-vs-anon-client bug fix:
+//   _sbClient      → starts anon (pre-login), then carries the user's session
+//                     after doVerifyOtp() so writes gated by is_admin()/
+//                     auth.uid() on launcher_apps/launcher_tabs actually pass.
+//                     Read behaviour is unchanged (their SELECT policies are
+//                     unconditional for `public`).
 //   _sbAuthClient  → carries the user's JWT, used only for auth + profile lookup
 // ════════════════════════════════════════════════════════════════
 
@@ -1429,15 +1570,29 @@ async function doVerifyOtp(){
       _refresh_token: authData.session.refresh_token
     };
 
+    // Propagate the session onto the DATA client too. launcher_apps' RLS
+    // policies (admins manage apps / allow_insert_launcher_apps / etc.) gate
+    // writes on is_admin() and auth.uid(), which only resolve when the
+    // connection is actually authenticated — _sbClient stayed anon-only here
+    // previously (see NOTE below), which meant every admin insert/update was
+    // silently rejected by RLS regardless of profile role. Reads are
+    // unaffected: launcher_apps' SELECT policies are granted to `public`
+    // unconditionally, so this doesn't narrow what anyone can see.
+    if(_sbClient){
+      try{ await _sbClient.auth.setSession({access_token: authData.session.access_token, refresh_token: authData.session.refresh_token}); }
+      catch(e){ console.warn('[LOGIN] Could not attach session to data client — writes to launcher_apps will likely fail RLS:', e); }
+    }
+
     document.getElementById('login-screen').classList.add('hidden');
     errEl.textContent = '';
     errEl.style.color = '';
     applyRoleVisibility();
     updateUserChip();
-    // NOTE: We deliberately do NOT re-probe the cloud here, and we keep
-    // using _sbClient (the anon data client) for loadTabs()/loadApps().
-    // This preserves the exact behaviour the launcher had before Supabase
-    // Auth was introduced — same role, same RLS path, same rows.
+    // UPDATED NOTE: _sbClient now carries the same authenticated session as
+    // _sbAuthClient (see above) so writes gated by is_admin()/auth.uid() can
+    // actually pass. loadTabs()/loadApps() still return the same rows they
+    // always did, since launcher_apps'/launcher_tabs' SELECT policies are
+    // unconditional for `public` and don't depend on the connection's role.
     await loadTabs();
     await loadApps();
     await loadEffectiveAppAccess();
@@ -1469,13 +1624,19 @@ function doResetOtpFlow(){
 }
 
 async function doLogout(){
-  // Sign out of Supabase Auth on the auth-only client so the next login
-  // starts from a clean slate. The data client (_sbClient) was never
-  // authenticated in the first place, so there's nothing to sign out of there.
+  // Sign out on both clients now — the data client (_sbClient) is no longer
+  // anon-only; it was given the user's session at login (see doVerifyOtp)
+  // so writes gated by is_admin()/auth.uid() would work. Rebuilding it fresh
+  // guarantees no stale authenticated session lingers into the next login.
   if(_sbAuthClient){
     try { await _sbAuthClient.auth.signOut(); }
     catch(err){ console.warn('[LOGOUT] auth.signOut failed:', err); }
   }
+  if(_sbClient){
+    try { await _sbClient.auth.signOut(); }
+    catch(err){ console.warn('[LOGOUT] data client signOut failed:', err); }
+  }
+  _sbClient = buildSupabaseClient();
   _currentUser = null;
   // Reset access state and clear the in-memory app list so the next user
   // never momentarily sees the previous user's apps before their grants load.
@@ -1580,31 +1741,93 @@ function colorForTabIndex(i){
   return TAB_PALETTE[((i % TAB_PALETTE.length) + TAB_PALETTE.length) % TAB_PALETTE.length];
 }
 
+// Stack order of the divider cards (tab ids, front first). The active tab
+// is always at the front; the others keep their relative order, like
+// real dividers when one card is pulled out and placed on top.
+let stackOrder = [];
+
+function syncStackOrder(){
+  const ids = tabs.map(t => t.id);
+  stackOrder = stackOrder.filter(id => ids.includes(id));
+  ids.forEach(id => { if(!stackOrder.includes(id)) stackOrder.push(id); });
+  stackOrder = [activeTab, ...stackOrder.filter(id => id !== activeTab)];
+}
+
 function renderTabBar(){
   const bar = document.getElementById('tab-bar');
+  const holder = document.getElementById('card-holder');
+  const actions = document.getElementById('tab-actions');
   const isAdmin = _currentUser && _currentUser.role === 'admin';
   if(!tabExists(activeTab)) activeTab = tabs[0] ? tabs[0].id : 'misc';
+  syncStackOrder();
+  const n = Math.max(tabs.length, 1);
+  holder.style.setProperty('--n', n);
   bar.innerHTML = tabs.map((t, i) => {
-    const cnt = apps.filter(a => (a.tab || 'misc') === t.id).length;
     const edit = isAdmin
       ? `<span class="tab-edit" title="Rename or delete tab" onclick="event.stopPropagation(); manageTab('${t.id}')">✎</span>`
       : '';
-    const color = colorForTabIndex(i);
-    return `<button class="tab-btn ${t.id===activeTab?'active':''}"
-                    style="--tab-color:${color};"
-                    onclick="setActiveTab('${t.id}')">
-      ${escapeHtml(t.label)} <span class="tab-count">(${cnt})</span>${edit}
-    </button>`;
-  }).join('')
-    + (isAdmin
-        ? `<button class="new-tab-btn" onclick="addNewTab()">+ New tab</button>`
-        : '');
+    const p = stackOrder.indexOf(t.id);
+    const isFront = t.id === activeTab;
+    return `<div class="holder-card ${isFront ? 'front' : ''}" data-tab-id="${t.id}"
+                 style="--i:${i}; --p:${p}; z-index:${n - p};">
+      <button class="tab-btn ${isFront ? 'active' : ''}" title="${escapeHtml(t.label)}"
+              onclick="setActiveTab('${t.id}')">
+        <span class="tab-label">${escapeHtml(t.label)}</span>${edit}
+      </button>
+    </div>`;
+  }).join('');
+  actions.innerHTML = isAdmin
+    ? `<button class="new-tab-btn" onclick="addNewTab()">+ New tab</button>`
+    : '';
 }
 
+// Clicking a tab lifts its card out of the stack, moves it to the front,
+// and drops it back down on top of the other cards. The grid fades out
+// while the card moves, then render() redraws the icons on the new card.
+let _stackBusy = false;
 function setActiveTab(tabId){
-  activeTab = tabId;
-  renderTabBar();
-  render();
+  if(_stackBusy) return;
+  const bar = document.getElementById('tab-bar');
+  const card = bar.querySelector(`.holder-card[data-tab-id="${CSS.escape(tabId)}"]`);
+  const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(tabId === activeTab || !card || reduceMotion){
+    activeTab = tabId;
+    renderTabBar();
+    render();
+    return;
+  }
+  _stackBusy = true;
+  const grid = document.getElementById('app-grid');
+  const n = tabs.length;
+  grid.classList.add('swapping');
+  clearConnectors();
+  card.style.zIndex = n + 1;
+  bar.querySelectorAll('.holder-card').forEach(el => {
+    const isNew = el === card;
+    el.classList.toggle('front', isNew);
+    const btn = el.querySelector('.tab-btn');
+    if(btn) btn.classList.toggle('active', isNew);
+  });
+  card.classList.add('lift');
+  setTimeout(() => {
+    activeTab = tabId;
+    syncStackOrder();
+    bar.querySelectorAll('.holder-card').forEach(el => {
+      const p = stackOrder.indexOf(el.dataset.tabId);
+      el.style.setProperty('--p', p);
+      if(el !== card) el.style.zIndex = n - p;
+      el.classList.toggle('front', p === 0);
+      const btn = el.querySelector('.tab-btn');
+      if(btn) btn.classList.toggle('active', p === 0);
+    });
+    card.classList.remove('lift');
+    setTimeout(() => {
+      renderTabBar();
+      grid.classList.remove('swapping');
+      render();
+      _stackBusy = false;
+    }, 320);
+  }, 200);
 }
 
 async function addNewTab(){
@@ -1771,8 +1994,9 @@ function drawConnectors(activeTabColor){
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     path.setAttribute('d', d);
     path.setAttribute('fill', 'none');
-    path.setAttribute('stroke', activeTabColor);
-    path.setAttribute('stroke-width', '1.5');
+    path.setAttribute('stroke', '#b5121b');
+    path.setAttribute('stroke-opacity', '0.35');
+    path.setAttribute('stroke-width', '1.2');
     path.setAttribute('stroke-linecap', 'round');
     path.setAttribute('opacity', '0.55');
     svg.appendChild(path);
