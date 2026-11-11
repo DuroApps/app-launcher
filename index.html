@@ -491,18 +491,18 @@
   .card-holder {
     --accent: #b5121b;
     --card-front: rgba(246, 247, 249, 0.62);
-    --card-back:  rgba(213, 217, 223, 0.78);
+    --card-back:  rgba(186, 192, 201, 0.92);
     --card-line:  rgba(15, 23, 42, 0.08);
     --card-text-front: #111827;
-    --card-text-back:  #4b5563;
+    --card-text-back:  #374151;
     --tab-h: 42px;
   }
   .holder-card {
     border-radius: 0 16px 16px 16px;
   }
   .holder-card.front {
-    box-shadow: 0 1px 0 rgba(255,255,255,0.7) inset,
-                0 18px 40px -12px rgba(15, 23, 42, 0.16),
+    border-top-color: transparent;               /* no line under the selected tab */
+    box-shadow: 0 18px 40px -12px rgba(15, 23, 42, 0.16),
                 0 2px 6px rgba(15, 23, 42, 0.04);
   }
   .holder-card::after { display: none; }          /* no binder hole */
@@ -515,9 +515,11 @@
   }
   .holder-card:not(.front) .tab-btn:hover {
     filter: none;
-    background: rgba(226, 229, 234, 0.92);
+    background: rgba(206, 211, 218, 0.96);
     color: var(--card-text-front);
   }
+  /* Selected tab joins the card body with no seam. */
+  .holder-card.front .tab-btn { margin-bottom: 0; border-color: transparent; }
   /* Thin red bar on top of the selected tab. */
   .holder-card.front .tab-btn::before {
     content: ""; position: absolute; top: 0; left: 16px; right: 16px;
@@ -775,6 +777,15 @@ let _sbAuthClient = null;  // AUTH client — used ONLY for signInWithOtp() /
                            //   data client's queries, which would change the
                            //   effective role from anon to authenticated and
                            //   could trigger different (empty) RLS results.
+// Lets apps opened from this launcher (e.g. Legacy FAS reports) borrow the
+// live sign-in instead of a login snapshot. Returns the current access token,
+// renewed by getSession() when it has expired, or null when nobody is signed
+// in. Only pages on this same origin can call it.
+window.duroGetAccessToken = async () => {
+  if(!_sbAuthClient) return null;
+  const { data } = await _sbAuthClient.auth.getSession();
+  return (data && data.session && data.session.access_token) || null;
+};
 let _cloudReady   = false;
 let _currentUser  = null;
 let apps          = [];
